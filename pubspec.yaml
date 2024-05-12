@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_map: ^6.1.0
+  geodesy: ^0.10.2
   latlong2: ^0.9.1
 
 dev_dependencies:

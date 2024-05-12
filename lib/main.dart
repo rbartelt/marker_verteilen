@@ -1,6 +1,6 @@
+import 'package:geodesy/geodesy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
 void main() => runApp(const MyApp());
 
@@ -25,6 +25,7 @@ class MapScreen extends StatefulWidget {
 
 class MapScreenState extends State<MapScreen> {
   List<List<LatLng>> vectorPoints = [];
+  List<List<LatLng>> perpendicularVectorPoints = [];
   List<int> numberOfMarkersXPerVector = [];
   List<int> numberOfMarkersYPerVector = [];
   List<double> markerSpacingXPerVector = [];
@@ -51,18 +52,26 @@ class MapScreenState extends State<MapScreen> {
                 TileLayer(
                   urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
                   subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
-                  //urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.example.app',
                 ),
-                PolylineLayer(
-                  polylines: vectorPoints
-                      .map((points) => Polyline(
-                            points: points,
-                            color: Colors.red,
-                            strokeWidth: 3.0,
-                          ))
-                      .toList(),
-                ),
+                // PolylineLayer(
+                //   polylines: [
+                //     ...vectorPoints
+                //         .map((points) => Polyline(
+                //               points: points,
+                //               color: Colors.red,
+                //               strokeWidth: 3.0,
+                //             ))
+                //         .toList(),
+                //     ...perpendicularVectorPoints
+                //         .map((points) => Polyline(
+                //               points: points,
+                //               color: Colors.green,
+                //               strokeWidth: 3.0,
+                //             ))
+                //         .toList(),
+                //   ],
+                // ),
                 MarkerLayer(
                   markers: markers,
                 ),
@@ -70,105 +79,14 @@ class MapScreenState extends State<MapScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                vectorPoints.add([]);
-                numberOfMarkersXPerVector.add(11);
-                numberOfMarkersYPerVector.add(3);
-                markerSpacingXPerVector.add(4.0);
-                markerSpacingYPerVector.add(4.0);
-              });
-            },
+            onPressed: _addVector,
             child: const Text('Add Vector'),
           ),
-          ListView.builder(
-            shrinkWrap: true,
-            itemCount: vectorPoints.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Text('Vector ${index + 1} - Number of Markers in X:'),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              setState(() {
-                                numberOfMarkersXPerVector[index] = int.tryParse(value) ?? 11;
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              hintText: 'Enter number of markers in X',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text('Vector ${index + 1} - Number of Markers in Y:'),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              setState(() {
-                                numberOfMarkersYPerVector[index] = int.tryParse(value) ?? 3;
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              hintText: 'Enter number of markers in Y',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text('Vector ${index + 1} - Marker Spacing in X (m):'),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              setState(() {
-                                markerSpacingXPerVector[index] = double.tryParse(value) ?? 4.0;
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              hintText: 'Enter marker spacing in X (meters)',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text('Vector ${index + 1} - Marker Spacing in Y (m):'),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              setState(() {
-                                markerSpacingYPerVector[index] = double.tryParse(value) ?? 4.0;
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              hintText: 'Enter marker spacing in Y (meters)',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
+          Expanded(
+            child: ListView.builder(
+              itemCount: vectorPoints.length,
+              itemBuilder: (context, index) => _buildVectorSettings(index),
+            ),
           ),
         ],
       ),
@@ -179,40 +97,78 @@ class MapScreenState extends State<MapScreen> {
     setState(() {
       if (vectorPoints.last.length < 2) {
         vectorPoints.last.add(point);
-        markers.add(
-          Marker(
-            width: 80.0,
-            height: 80.0,
-            point: point,
-            child: const Icon(Icons.location_on, color: Colors.red),
-          ),
-        );
+        _addMarker(point);
       }
       if (vectorPoints.last.length == 2) {
-        markers.clear(); // Clear previous markers
-        markers.add(
-          Marker(
-            width: 80.0,
-            height: 80.0,
-            point: vectorPoints.last[0],
-            child: const Icon(Icons.location_on, color: Colors.red),
-          ),
-        );
-        markers.add(
-          Marker(
-            width: 80.0,
-            height: 80.0,
-            point: vectorPoints.last[1],
-            child: const Icon(Icons.location_on, color: Colors.red),
-          ),
-        );
         _distributeMarkers();
       }
     });
   }
 
+  void _addVector() {
+    setState(() {
+      vectorPoints.add([]);
+      perpendicularVectorPoints.add([]);
+      numberOfMarkersXPerVector.add(11);
+      numberOfMarkersYPerVector.add(3);
+      markerSpacingXPerVector.add(4.0);
+      markerSpacingYPerVector.add(4.0);
+    });
+  }
+
+  Widget _buildVectorSettings(int index) {
+    return Padding(
+      padding: const EdgeInsets.all(10.0),
+      child: Column(
+        children: [
+          _buildSettingRow('Number of Markers in X', (value) {
+            numberOfMarkersXPerVector[index] = int.tryParse(value) ?? 11;
+          }),
+          _buildSettingRow('Number of Markers in Y', (value) {
+            numberOfMarkersYPerVector[index] = int.tryParse(value) ?? 3;
+          }),
+          _buildSettingRow('Marker Spacing in X (m)', (value) {
+            markerSpacingXPerVector[index] = double.tryParse(value) ?? 4.0;
+          }),
+          _buildSettingRow('Marker Spacing in Y (m)', (value) {
+            markerSpacingYPerVector[index] = double.tryParse(value) ?? 4.0;
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingRow(String label, ValueChanged<String> onChanged) {
+    return Row(
+      children: [
+        Text('Vector ${vectorPoints.length} - $label:'),
+        const SizedBox(width: 10),
+        Expanded(
+          child: TextField(
+            keyboardType: TextInputType.number,
+            onChanged: onChanged,
+            decoration: InputDecoration(
+              hintText: 'Enter $label',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _addMarker(LatLng point) {
+    markers.add(
+      Marker(
+        width: 80.0,
+        height: 80.0,
+        point: point,
+        child: const Icon(Icons.location_on, color: Colors.blue),
+      ),
+    );
+  }
+
   void _distributeMarkers() {
-    markers.clear(); // Clear previous markers
+    markers.clear();
     for (int i = 0; i < vectorPoints.length; i++) {
       List<LatLng> points = vectorPoints[i];
       int numberOfMarkersX = numberOfMarkersXPerVector[i];
@@ -220,41 +176,32 @@ class MapScreenState extends State<MapScreen> {
       double markerSpacingX = markerSpacingXPerVector[i];
       double markerSpacingY = markerSpacingYPerVector[i];
 
-      LatLng vectorDirection = LatLng(
-        points[1].latitude - points[0].latitude,
-        points[1].longitude - points[0].longitude,
-      );
+      LatLng startPoint = points[0];
+      LatLng endPoint = points[1];
 
-      LatLng perpendicularVector = LatLng(
-        -vectorDirection.longitude,
-        vectorDirection.latitude,
-      );
-      double vectorLength = const Distance().as(
-        LengthUnit.Meter,
-        points[0],
-        points[1],
-      );
-      LatLng unitVector = LatLng(
-        vectorDirection.latitude / vectorLength,
-        vectorDirection.longitude / vectorLength,
-      );
+      Geodesy geodesy = Geodesy();
+      //num vectorLength = geodesy.distanceBetweenTwoGeoPoints(startPoint, endPoint);
+      num bearing = geodesy.bearingBetweenTwoGeoPoints(startPoint, endPoint);
+      double perpendicularBearing = (bearing + 90) % 360;
 
       for (int y = 0; y < numberOfMarkersY; y++) {
         for (int x = 0; x < numberOfMarkersX; x++) {
           double distanceAlongVector = markerSpacingX * x;
           double distancePerpendicular = markerSpacingY * y;
-          LatLng markerPosition = LatLng(
-            points[0].latitude + unitVector.latitude * distanceAlongVector - unitVector.longitude * distancePerpendicular,
-            points[0].longitude + unitVector.longitude * distanceAlongVector + unitVector.latitude * distancePerpendicular,
+
+          LatLng markerAlongVector = geodesy.destinationPointByDistanceAndBearing(
+            startPoint,
+            distanceAlongVector,
+            bearing,
           );
-          markers.add(
-            Marker(
-              width: 80.0,
-              height: 80.0,
-              point: markerPosition,
-              child: const Icon(Icons.location_on, color: Colors.blue),
-            ),
+
+          LatLng markerPosition = geodesy.destinationPointByDistanceAndBearing(
+            markerAlongVector,
+            distancePerpendicular,
+            perpendicularBearing,
           );
+
+          _addMarker(markerPosition);
         }
       }
     }
