@@ -24,13 +24,11 @@ class MapScreen extends StatefulWidget {
 }
 
 class MapScreenState extends State<MapScreen> {
-  List<List<LatLng>> vectorPoints = [];
-  List<List<LatLng>> perpendicularVectorPoints = [];
-  List<int> numberOfMarkersXPerVector = [];
-  List<int> numberOfMarkersYPerVector = [];
-  List<double> markerSpacingXPerVector = [];
-  List<double> markerSpacingYPerVector = [];
-  List<Marker> markers = [];
+  List<List<LatLng>> beachSections = [];
+  List<int> numberOfRows = [];
+  List<double> spaceBetweenBeachchairs = [];
+  List<double> spaceBetweenRows = [];
+  List<Marker> beachchairs = [];
 
   @override
   Widget build(BuildContext context) {
@@ -38,54 +36,48 @@ class MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: const Text('Draw Vector with Markers on Flutter Map'),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Flexible(
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
-                initialZoom: 19,
-                initialRotation: -45,
-                onTap: (tapPosition, point) => _handleTap(point),
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                  subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
-                  userAgentPackageName: 'com.example.app',
-                ),
-                // PolylineLayer(
-                //   polylines: [
-                //     ...vectorPoints
-                //         .map((points) => Polyline(
-                //               points: points,
-                //               color: Colors.red,
-                //               strokeWidth: 3.0,
-                //             ))
-                //         .toList(),
-                //     ...perpendicularVectorPoints
-                //         .map((points) => Polyline(
-                //               points: points,
-                //               color: Colors.green,
-                //               strokeWidth: 3.0,
-                //             ))
-                //         .toList(),
-                //   ],
-                // ),
-                MarkerLayer(
-                  markers: markers,
-                ),
-              ],
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
+              initialZoom: 19,
+              initialRotation: -45,
+              onTap: (tapPosition, point) => _handleTap(point),
             ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
+                userAgentPackageName: 'com.example.app',
+              ),
+              MarkerLayer(
+                markers: beachchairs,
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: _addVector,
-            child: const Text('Add Vector'),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: vectorPoints.length,
-              itemBuilder: (context, index) => _buildVectorSettings(index),
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              color: Colors.white.withOpacity(0.5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    onPressed: _addBeachSection,
+                    child: const Text('Add Beach Section'),
+                  ),
+                  SizedBox(
+                    width: 400,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: beachSections.length,
+                      itemBuilder: (context, index) => _buildVectorSettings(index),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -95,24 +87,22 @@ class MapScreenState extends State<MapScreen> {
 
   void _handleTap(LatLng point) {
     setState(() {
-      if (vectorPoints.last.length < 2) {
-        vectorPoints.last.add(point);
-        _addMarker(point);
+      if (beachSections.last.length < 2) {
+        beachSections.last.add(point);
+        _addBeachchair(point);
       }
-      if (vectorPoints.last.length == 2) {
-        _distributeMarkers();
+      if (beachSections.last.length == 2) {
+        _distributeBeachchairs();
       }
     });
   }
 
-  void _addVector() {
+  void _addBeachSection() {
     setState(() {
-      vectorPoints.add([]);
-      perpendicularVectorPoints.add([]);
-      numberOfMarkersXPerVector.add(11);
-      numberOfMarkersYPerVector.add(3);
-      markerSpacingXPerVector.add(4.0);
-      markerSpacingYPerVector.add(4.0);
+      beachSections.add([]);
+      numberOfRows.add(3);
+      spaceBetweenBeachchairs.add(4.0);
+      spaceBetweenRows.add(4.0);
     });
   }
 
@@ -121,17 +111,14 @@ class MapScreenState extends State<MapScreen> {
       padding: const EdgeInsets.all(10.0),
       child: Column(
         children: [
-          _buildSettingRow('Number of Markers in X', (value) {
-            numberOfMarkersXPerVector[index] = int.tryParse(value) ?? 11;
+          _buildSettingRow('Number of Rows', (value) {
+            numberOfRows[index] = int.tryParse(value) ?? 3;
           }),
-          _buildSettingRow('Number of Markers in Y', (value) {
-            numberOfMarkersYPerVector[index] = int.tryParse(value) ?? 3;
+          _buildSettingRow('Space between beachchairs (m)', (value) {
+            spaceBetweenBeachchairs[index] = double.tryParse(value) ?? 4.0;
           }),
-          _buildSettingRow('Marker Spacing in X (m)', (value) {
-            markerSpacingXPerVector[index] = double.tryParse(value) ?? 4.0;
-          }),
-          _buildSettingRow('Marker Spacing in Y (m)', (value) {
-            markerSpacingYPerVector[index] = double.tryParse(value) ?? 4.0;
+          _buildSettingRow('Space between rows (m)', (value) {
+            spaceBetweenRows[index] = double.tryParse(value) ?? 4.0;
           }),
         ],
       ),
@@ -141,7 +128,7 @@ class MapScreenState extends State<MapScreen> {
   Widget _buildSettingRow(String label, ValueChanged<String> onChanged) {
     return Row(
       children: [
-        Text('Vector ${vectorPoints.length} - $label:'),
+        Text('Vector ${beachSections.length} - $label:'),
         const SizedBox(width: 10),
         Expanded(
           child: TextField(
@@ -156,8 +143,8 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _addMarker(LatLng point) {
-    markers.add(
+  void _addBeachchair(LatLng point) {
+    beachchairs.add(
       Marker(
         width: 80.0,
         height: 80.0,
@@ -167,20 +154,26 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _distributeMarkers() {
-    markers.clear();
-    for (int i = 0; i < vectorPoints.length; i++) {
-      List<LatLng> points = vectorPoints[i];
-      int numberOfMarkersX = numberOfMarkersXPerVector[i];
-      int numberOfMarkersY = numberOfMarkersYPerVector[i];
-      double markerSpacingX = markerSpacingXPerVector[i];
-      double markerSpacingY = markerSpacingYPerVector[i];
+  int _calculateNumberOfBeachchairsBetweenTwoPoints(LatLng point1, LatLng point2, double spacing) {
+    Geodesy geodesy = Geodesy();
+    num distance = geodesy.distanceBetweenTwoGeoPoints(point1, point2);
+    int numberOfMarkers = (distance ~/ spacing) + 1;
+    return numberOfMarkers;
+  }
+
+  void _distributeBeachchairs() {
+    beachchairs.clear();
+    for (int i = 0; i < beachSections.length; i++) {
+      List<LatLng> points = beachSections[i];
+      int numberOfMarkersX = _calculateNumberOfBeachchairsBetweenTwoPoints(points[0], points[1], spaceBetweenBeachchairs[i]);
+      int numberOfMarkersY = numberOfRows[i];
+      double markerSpacingX = spaceBetweenBeachchairs[i];
+      double markerSpacingY = spaceBetweenRows[i];
 
       LatLng startPoint = points[0];
       LatLng endPoint = points[1];
 
       Geodesy geodesy = Geodesy();
-      //num vectorLength = geodesy.distanceBetweenTwoGeoPoints(startPoint, endPoint);
       num bearing = geodesy.bearingBetweenTwoGeoPoints(startPoint, endPoint);
       double perpendicularBearing = (bearing + 90) % 360;
 
@@ -201,7 +194,7 @@ class MapScreenState extends State<MapScreen> {
             perpendicularBearing,
           );
 
-          _addMarker(markerPosition);
+          _addBeachchair(markerPosition);
         }
       }
     }
