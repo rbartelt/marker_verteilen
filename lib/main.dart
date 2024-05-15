@@ -2,6 +2,8 @@ import 'package:geodesy/geodesy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
+import 'beachsection.dart';
+
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
@@ -24,11 +26,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class MapScreenState extends State<MapScreen> {
-  List<List<LatLng>> beachSections = [];
-  List<int> numberOfRows = [];
-  List<double> spaceBetweenBeachchairs = [];
-  List<double> spaceBetweenRows = [];
-  List<Marker> beachchairs = [];
+  List<BeachSection> beachSections = [];
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +50,14 @@ class MapScreenState extends State<MapScreen> {
                 userAgentPackageName: 'com.example.app',
               ),
               MarkerLayer(
-                markers: beachchairs,
+                markers: beachSections
+                    .expand((section) => section.spots.map((spot) => Marker(
+                          width: 80.0,
+                          height: 80.0,
+                          point: spot,
+                          child: const Icon(Icons.location_on, color: Colors.blue),
+                        )))
+                    .toList(),
               ),
             ],
           ),
@@ -73,7 +78,7 @@ class MapScreenState extends State<MapScreen> {
                     child: ListView.builder(
                       shrinkWrap: true,
                       itemCount: beachSections.length,
-                      itemBuilder: (context, index) => _buildVectorSettings(index),
+                      itemBuilder: (context, index) => _buildBeachSectionSettings(index),
                     ),
                   ),
                 ],
@@ -87,38 +92,39 @@ class MapScreenState extends State<MapScreen> {
 
   void _handleTap(LatLng point) {
     setState(() {
-      if (beachSections.last.length < 2) {
-        beachSections.last.add(point);
-        _addBeachchair(point);
-      }
-      if (beachSections.last.length == 2) {
-        _distributeBeachchairs();
+      if (beachSections.last.startPoint == null) {
+        beachSections.last.startPoint = point;
+      } else {
+        beachSections.last.endPoint = point;
+        _distributeSpotsForBeachSection(beachSections.last);
       }
     });
   }
 
   void _addBeachSection() {
     setState(() {
-      beachSections.add([]);
-      numberOfRows.add(3);
-      spaceBetweenBeachchairs.add(4.0);
-      spaceBetweenRows.add(4.0);
+      beachSections.add(BeachSection(
+        numRows: 3,
+        rowSpacing: 4.0,
+        spotSpacing: 4.0,
+        spots: [],
+      ));
     });
   }
 
-  Widget _buildVectorSettings(int index) {
+  Widget _buildBeachSectionSettings(int index) {
     return Padding(
       padding: const EdgeInsets.all(10.0),
       child: Column(
         children: [
           _buildSettingRow('Number of Rows', (value) {
-            numberOfRows[index] = int.tryParse(value) ?? 3;
+            beachSections[index] = beachSections[index].copyWith(numRows: int.tryParse(value) ?? 3, spotSpacing: null, rowSpacing: null);
           }),
           _buildSettingRow('Space between beachchairs (m)', (value) {
-            spaceBetweenBeachchairs[index] = double.tryParse(value) ?? 4.0;
+            beachSections[index] = beachSections[index].copyWith(spotSpacing: double.tryParse(value) ?? 4.0, numRows: null, rowSpacing: null);
           }),
           _buildSettingRow('Space between rows (m)', (value) {
-            spaceBetweenRows[index] = double.tryParse(value) ?? 4.0;
+            beachSections[index] = beachSections[index].copyWith(rowSpacing: double.tryParse(value) ?? 4.0, numRows: null, spotSpacing: null);
           }),
         ],
       ),
@@ -143,17 +149,6 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _addBeachchair(LatLng point) {
-    beachchairs.add(
-      Marker(
-        width: 80.0,
-        height: 80.0,
-        point: point,
-        child: const Icon(Icons.location_on, color: Colors.blue),
-      ),
-    );
-  }
-
   int _calculateNumberOfBeachchairsBetweenTwoPoints(LatLng point1, LatLng point2, double spacing) {
     Geodesy geodesy = Geodesy();
     num distance = geodesy.distanceBetweenTwoGeoPoints(point1, point2);
@@ -161,41 +156,37 @@ class MapScreenState extends State<MapScreen> {
     return numberOfMarkers;
   }
 
-  void _distributeBeachchairs() {
-    beachchairs.clear();
-    for (int i = 0; i < beachSections.length; i++) {
-      List<LatLng> points = beachSections[i];
-      int numberOfMarkersX = _calculateNumberOfBeachchairsBetweenTwoPoints(points[0], points[1], spaceBetweenBeachchairs[i]);
-      int numberOfMarkersY = numberOfRows[i];
-      double markerSpacingX = spaceBetweenBeachchairs[i];
-      double markerSpacingY = spaceBetweenRows[i];
+  void _distributeSpotsForBeachSection(BeachSection section) {
+    int numberOfMarkersX = _calculateNumberOfBeachchairsBetweenTwoPoints(section.startPoint!, section.endPoint!, section.spotSpacing);
+    int numberOfMarkersY = section.numRows;
+    double markerSpacingX = section.spotSpacing;
+    double markerSpacingY = section.rowSpacing;
 
-      LatLng startPoint = points[0];
-      LatLng endPoint = points[1];
+    LatLng startPoint = section.startPoint!;
+    LatLng endPoint = section.endPoint!;
 
-      Geodesy geodesy = Geodesy();
-      num bearing = geodesy.bearingBetweenTwoGeoPoints(startPoint, endPoint);
-      double perpendicularBearing = (bearing + 90) % 360;
+    Geodesy geodesy = Geodesy();
+    num bearing = geodesy.bearingBetweenTwoGeoPoints(startPoint, endPoint);
+    double perpendicularBearing = (bearing + 90) % 360;
 
-      for (int y = 0; y < numberOfMarkersY; y++) {
-        for (int x = 0; x < numberOfMarkersX; x++) {
-          double distanceAlongVector = markerSpacingX * x;
-          double distancePerpendicular = markerSpacingY * y;
+    for (int y = 0; y < numberOfMarkersY; y++) {
+      for (int x = 0; x < numberOfMarkersX; x++) {
+        double distanceAlongVector = markerSpacingX * x;
+        double distancePerpendicular = markerSpacingY * y;
 
-          LatLng markerAlongVector = geodesy.destinationPointByDistanceAndBearing(
-            startPoint,
-            distanceAlongVector,
-            bearing,
-          );
+        LatLng markerAlongVector = geodesy.destinationPointByDistanceAndBearing(
+          startPoint,
+          distanceAlongVector,
+          bearing,
+        );
 
-          LatLng markerPosition = geodesy.destinationPointByDistanceAndBearing(
-            markerAlongVector,
-            distancePerpendicular,
-            perpendicularBearing,
-          );
+        LatLng markerPosition = geodesy.destinationPointByDistanceAndBearing(
+          markerAlongVector,
+          distancePerpendicular,
+          perpendicularBearing,
+        );
 
-          _addBeachchair(markerPosition);
-        }
+        section.spots.add(markerPosition);
       }
     }
   }
