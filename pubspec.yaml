@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_map: ^6.1.0
+  flutter_map_dragmarker: ^6.0.0
+  flutter_map_line_editor: ^6.0.0
   geodesy: ^0.10.2
   latlong2: ^0.9.1
 

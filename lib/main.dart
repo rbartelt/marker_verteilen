@@ -1,3 +1,5 @@
+import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
+import 'package:flutter_map_line_editor/flutter_map_line_editor.dart';
 import 'package:geodesy/geodesy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,6 +29,30 @@ class MapScreen extends StatefulWidget {
 
 class MapScreenState extends State<MapScreen> {
   List<BeachSection> beachSections = [];
+  late PolyEditor polyEditor;
+
+  final polygons = <Polygon>[];
+  final testPolygon = Polygon(
+    color: Colors.deepOrange,
+    borderStrokeWidth: 4,
+    isFilled: false,
+    points: [],
+  );
+
+  @override
+  void initState() {
+    super.initState();
+
+    polyEditor = PolyEditor(
+      addClosePathMarker: true,
+      points: testPolygon.points,
+      pointIcon: const Icon(Icons.crop_square, size: 23),
+      intermediateIcon: const Icon(Icons.lens, size: 15, color: Colors.grey),
+      callbackRefresh: () => {setState(() {})},
+    );
+
+    polygons.add(testPolygon);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +67,10 @@ class MapScreenState extends State<MapScreen> {
               initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
               initialZoom: 19,
               initialRotation: -45,
-              onTap: (tapPosition, point) => _handleTap(point),
+              //onTap: (tapPosition, point) => _handleTap(point),
+              onTap: (_, ll) {
+                polyEditor.add(testPolygon.points, ll);
+              },
             ),
             children: [
               TileLayer(
@@ -49,16 +78,18 @@ class MapScreenState extends State<MapScreen> {
                 subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
                 userAgentPackageName: 'com.example.app',
               ),
-              MarkerLayer(
-                markers: beachSections
-                    .expand((section) => section.spots.map((spot) => Marker(
-                          width: 80.0,
-                          height: 80.0,
-                          point: spot,
-                          child: const Icon(Icons.location_on, color: Colors.blue),
-                        )))
-                    .toList(),
-              ),
+              PolygonLayer(polygons: polygons),
+              DragMarkers(markers: polyEditor.edit()),
+              // MarkerLayer(
+              //   markers: beachSections
+              //       .expand((section) => section.spots.map((spot) => Marker(
+              //             width: 80.0,
+              //             height: 80.0,
+              //             point: spot,
+              //             child: const Icon(Icons.location_on, color: Colors.blue),
+              //           )))
+              //       .toList(),
+              // ),
             ],
           ),
           Positioned(
