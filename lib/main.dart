@@ -1,8 +1,6 @@
-import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
-import 'package:flutter_map_line_editor/flutter_map_line_editor.dart';
-import 'package:geodesy/geodesy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geodesy/geodesy.dart';
 
 import 'beachsection.dart';
 
@@ -29,7 +27,15 @@ class MapScreen extends StatefulWidget {
 
 class MapScreenState extends State<MapScreen> {
   List<BeachSection> beachSections = [];
-  late PolyEditor polyEditor;
+  bool _isAddingBeachSection = false;
+  String _infoMessage = '';
+  bool _showInputForm = false;
+  int _numRows = 3;
+  double _spotSpacing = 4.0;
+  double _rowSpacing = 4.0;
+  LatLng? _startPoint;
+  LatLng? _endPoint;
+  BeachSection? _selectedBeachSection;
 
   final polygons = <Polygon>[];
   final testPolygon = Polygon(
@@ -42,15 +48,6 @@ class MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-
-    polyEditor = PolyEditor(
-      addClosePathMarker: true,
-      points: testPolygon.points,
-      pointIcon: const Icon(Icons.crop_square, size: 23),
-      intermediateIcon: const Icon(Icons.lens, size: 15, color: Colors.grey),
-      callbackRefresh: () => {setState(() {})},
-    );
-
     polygons.add(testPolygon);
   }
 
@@ -67,10 +64,7 @@ class MapScreenState extends State<MapScreen> {
               initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
               initialZoom: 19,
               initialRotation: -45,
-              //onTap: (tapPosition, point) => _handleTap(point),
-              onTap: (_, ll) {
-                polyEditor.add(testPolygon.points, ll);
-              },
+              onTap: (tapPosition, point) => _handleTap(point),
             ),
             children: [
               TileLayer(
@@ -78,18 +72,26 @@ class MapScreenState extends State<MapScreen> {
                 subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
                 userAgentPackageName: 'com.example.app',
               ),
-              PolygonLayer(polygons: polygons),
-              DragMarkers(markers: polyEditor.edit()),
-              // MarkerLayer(
-              //   markers: beachSections
-              //       .expand((section) => section.spots.map((spot) => Marker(
-              //             width: 80.0,
-              //             height: 80.0,
-              //             point: spot,
-              //             child: const Icon(Icons.location_on, color: Colors.blue),
-              //           )))
-              //       .toList(),
-              // ),
+              MarkerLayer(
+                markers: [
+                  if (_startPoint != null)
+                    Marker(
+                      width: 80.0,
+                      height: 80.0,
+                      point: _startPoint!,
+                      child: const Icon(Icons.location_on, color: Colors.red),
+                    ),
+                  ...beachSections.expand((section) => section.spots.map((spot) => Marker(
+                        width: 80.0,
+                        height: 80.0,
+                        point: spot,
+                        child: GestureDetector(
+                          onTap: () => _selectBeachSection(section),
+                          child: const Icon(Icons.location_on, color: Colors.blue),
+                        ),
+                      ))),
+                ],
+              ),
             ],
           ),
           Positioned(
@@ -101,83 +103,170 @@ class MapScreenState extends State<MapScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   ElevatedButton(
-                    onPressed: _addBeachSection,
+                    onPressed: _toggleInputForm,
                     child: const Text('Add Beach Section'),
-                  ),
-                  SizedBox(
-                    width: 400,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: beachSections.length,
-                      itemBuilder: (context, index) => _buildBeachSectionSettings(index),
-                    ),
                   ),
                 ],
               ),
             ),
           ),
+          if (_infoMessage.isNotEmpty)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                color: Colors.blue,
+                child: Text(
+                  _infoMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          if (_showInputForm)
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.3,
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_selectedBeachSection == null ? 'Add Beach Section' : 'Edit Beach Section', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    TextField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Number of Rows'),
+                      controller: TextEditingController(text: _numRows.toString()),
+                      onChanged: (value) => setState(() => _numRows = int.tryParse(value) ?? 3),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Space between beachchairs (m)'),
+                      controller: TextEditingController(text: _spotSpacing.toString()),
+                      onChanged: (value) => setState(() => _spotSpacing = double.tryParse(value) ?? 4.0),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Space between rows (m)'),
+                      controller: TextEditingController(text: _rowSpacing.toString()),
+                      onChanged: (value) => setState(() => _rowSpacing = double.tryParse(value) ?? 4.0),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _selectedBeachSection == null ? _startAddingBeachSection : _updateBeachSection,
+                      child: Text(_selectedBeachSection == null ? 'Start Adding' : 'Update'),
+                    ),
+                    if (_selectedBeachSection != null)
+                      ElevatedButton(
+                        onPressed: _cancelEdit,
+                        child: const Text('Cancel'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  void _toggleInputForm() {
+    setState(() {
+      _showInputForm = !_showInputForm;
+      _isAddingBeachSection = false;
+      _infoMessage = '';
+      _startPoint = null;
+      _endPoint = null;
+      _selectedBeachSection = null;
+    });
+  }
+
+  void _startAddingBeachSection() {
+    setState(() {
+      _isAddingBeachSection = true;
+      _showInputForm = false;
+      _infoMessage = 'Klicke den ersten Punkt des Strandabschnittes an.';
+    });
+  }
+
+  void _selectBeachSection(BeachSection section) {
+    setState(() {
+      _selectedBeachSection = section;
+      _numRows = section.numRows;
+      _spotSpacing = section.spotSpacing;
+      _rowSpacing = section.rowSpacing;
+      _startPoint = section.startPoint;
+      _endPoint = section.endPoint;
+      _showInputForm = true;
+    });
+  }
+
+  void _updateBeachSection() {
+    setState(() {
+      if (_selectedBeachSection != null) {
+        _selectedBeachSection?.copyWith(
+          startPoint: _startPoint,
+          endPoint: _endPoint,
+          numRows: _numRows,
+          spotSpacing: _spotSpacing,
+          rowSpacing: _rowSpacing,
+          spots: [],
+        );
+        // _selectedBeachSection!.numRows = _numRows;
+        // _selectedBeachSection!.spotSpacing = _spotSpacing;
+        // _selectedBeachSection!.rowSpacing = _rowSpacing;
+        // _selectedBeachSection!.startPoint = _startPoint;
+        // _selectedBeachSection!.endPoint = _endPoint;
+        // _selectedBeachSection!.spots.clear();
+        _distributeSpotsForBeachSection(_selectedBeachSection!);
+      }
+      _selectedBeachSection = null;
+      _showInputForm = false;
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _selectedBeachSection = null;
+      _showInputForm = false;
+    });
   }
 
   void _handleTap(LatLng point) {
+    if (!_isAddingBeachSection && _selectedBeachSection == null) return;
+
     setState(() {
-      if (beachSections.last.startPoint == null) {
-        beachSections.last.startPoint = point;
-      } else {
-        beachSections.last.endPoint = point;
-        _distributeSpotsForBeachSection(beachSections.last);
+      if (_startPoint == null) {
+        _startPoint = point;
+        _infoMessage = 'Klicke nun den zweiten Punkt des Strandabschnittes an.';
+      } else if (_endPoint == null) {
+        _endPoint = point;
+        if (_selectedBeachSection == null) {
+          beachSections.add(BeachSection(
+            numRows: _numRows,
+            rowSpacing: _rowSpacing,
+            spotSpacing: _spotSpacing,
+            startPoint: _startPoint,
+            endPoint: _endPoint,
+            spots: [],
+          ));
+          _distributeSpotsForBeachSection(beachSections.last);
+        } else {
+          _updateBeachSection();
+        }
+        _isAddingBeachSection = false;
+        _infoMessage = '';
+        _startPoint = null;
+        _endPoint = null;
       }
     });
-  }
-
-  void _addBeachSection() {
-    setState(() {
-      beachSections.add(BeachSection(
-        numRows: 3,
-        rowSpacing: 4.0,
-        spotSpacing: 4.0,
-        spots: [],
-      ));
-    });
-  }
-
-  Widget _buildBeachSectionSettings(int index) {
-    return Padding(
-      padding: const EdgeInsets.all(10.0),
-      child: Column(
-        children: [
-          _buildSettingRow('Number of Rows', (value) {
-            beachSections[index] = beachSections[index].copyWith(numRows: int.tryParse(value) ?? 3, spotSpacing: null, rowSpacing: null);
-          }),
-          _buildSettingRow('Space between beachchairs (m)', (value) {
-            beachSections[index] = beachSections[index].copyWith(spotSpacing: double.tryParse(value) ?? 4.0, numRows: null, rowSpacing: null);
-          }),
-          _buildSettingRow('Space between rows (m)', (value) {
-            beachSections[index] = beachSections[index].copyWith(rowSpacing: double.tryParse(value) ?? 4.0, numRows: null, spotSpacing: null);
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingRow(String label, ValueChanged<String> onChanged) {
-    return Row(
-      children: [
-        Text('Vector ${beachSections.length} - $label:'),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            keyboardType: TextInputType.number,
-            onChanged: onChanged,
-            decoration: InputDecoration(
-              hintText: 'Enter $label',
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   int _calculateNumberOfBeachchairsBetweenTwoPoints(LatLng point1, LatLng point2, double spacing) {
