@@ -12,10 +12,10 @@ import 'package:latlong2/latlong.dart';
 class BeachSection {
   LatLng? startPoint;
   LatLng? endPoint;
-  final int numRows;
-  final double rowSpacing;
-  final double spotSpacing;
-  final List<LatLng> spots;
+  int numRows;
+  double rowSpacing;
+  double spotSpacing;
+  List<LatLng> spots;
 
   BeachSection({
     this.startPoint,
@@ -26,14 +26,12 @@ class BeachSection {
     required this.spots,
   });
 
-  BeachSection copyWith({LatLng? startPoint, LatLng? endPoint, int? numRows, double? spotSpacing, double? rowSpacing, List<LatLng>? spots}) {
-    return BeachSection(
-      startPoint: startPoint ?? this.startPoint,
-      endPoint: endPoint ?? this.endPoint,
-      numRows: numRows ?? this.numRows,
-      rowSpacing: rowSpacing ?? this.rowSpacing,
-      spotSpacing: spotSpacing ?? this.spotSpacing,
-      spots: spots ?? this.spots,
-    );
+  void copyWith({LatLng? startPoint, LatLng? endPoint, int? numRows, double? spotSpacing, double? rowSpacing, List<LatLng>? spots}) {
+    this.startPoint = startPoint ?? this.startPoint;
+    this.endPoint = endPoint ?? this.endPoint;
+    this.numRows = numRows ?? this.numRows;
+    this.rowSpacing = rowSpacing ?? this.rowSpacing;
+    this.spotSpacing = spotSpacing ?? this.spotSpacing;
+    this.spots = spots ?? this.spots;
   }
 }

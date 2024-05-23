@@ -37,18 +37,96 @@ class MapScreenState extends State<MapScreen> {
   LatLng? _endPoint;
   BeachSection? _selectedBeachSection;
 
-  final polygons = <Polygon>[];
-  final testPolygon = Polygon(
-    color: Colors.deepOrange,
-    borderStrokeWidth: 4,
-    isFilled: false,
-    points: [],
-  );
+  String _numRowsErrorMessage = '';
+  String _spotSpacingErrorMessage = '';
+  String _rowSpacingErrorMessage = '';
+
+  final FocusNode _numRowsFocusNode = FocusNode();
+  final FocusNode _spotSpacingFocusNode = FocusNode();
+  final FocusNode _rowSpacingFocusNode = FocusNode();
+
+  final TextEditingController _numRowsController = TextEditingController();
+  final TextEditingController _spotSpacingController = TextEditingController();
+  final TextEditingController _rowSpacingController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    polygons.add(testPolygon);
+
+    _numRowsController.text = _numRows.toString();
+    _spotSpacingController.text = _spotSpacing.toString();
+    _rowSpacingController.text = _rowSpacing.toString();
+
+    _numRowsFocusNode.addListener(() {
+      if (!_numRowsFocusNode.hasFocus) {
+        _validateNumRows();
+      }
+    });
+
+    _spotSpacingFocusNode.addListener(() {
+      if (!_spotSpacingFocusNode.hasFocus) {
+        _validateSpotSpacing();
+      }
+    });
+
+    _rowSpacingFocusNode.addListener(() {
+      if (!_rowSpacingFocusNode.hasFocus) {
+        _validateRowSpacing();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _numRowsFocusNode.dispose();
+    _spotSpacingFocusNode.dispose();
+    _rowSpacingFocusNode.dispose();
+    _numRowsController.dispose();
+    _spotSpacingController.dispose();
+    _rowSpacingController.dispose();
+    super.dispose();
+  }
+
+  void _validateNumRows() {
+    setState(() {
+      _numRowsErrorMessage = '';
+      final parsedValue = int.tryParse(_numRowsController.text);
+      if (parsedValue == null) {
+        _numRowsErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
+      } else if (parsedValue < 1 || parsedValue > 20) {
+        _numRowsErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
+      } else {
+        _numRows = parsedValue;
+      }
+    });
+  }
+
+  void _validateSpotSpacing() {
+    setState(() {
+      _spotSpacingErrorMessage = '';
+      final parsedValue = double.tryParse(_spotSpacingController.text);
+      if (parsedValue == null) {
+        _spotSpacingErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
+      } else if (parsedValue < 1 || parsedValue > 20) {
+        _spotSpacingErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
+      } else {
+        _spotSpacing = parsedValue;
+      }
+    });
+  }
+
+  void _validateRowSpacing() {
+    setState(() {
+      _rowSpacingErrorMessage = '';
+      final parsedValue = double.tryParse(_rowSpacingController.text);
+      if (parsedValue == null) {
+        _rowSpacingErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
+      } else if (parsedValue < 1 || parsedValue > 20) {
+        _rowSpacingErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
+      } else {
+        _rowSpacing = parsedValue;
+      }
+    });
   }
 
   @override
@@ -87,7 +165,10 @@ class MapScreenState extends State<MapScreen> {
                         point: spot,
                         child: GestureDetector(
                           onTap: () => _selectBeachSection(section),
-                          child: const Icon(Icons.location_on, color: Colors.blue),
+                          child: Icon(
+                            Icons.location_on,
+                            color: _selectedBeachSection == section ? Colors.green : Colors.blue,
+                          ),
                         ),
                       ))),
                 ],
@@ -140,23 +221,35 @@ class MapScreenState extends State<MapScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Number of Rows'),
-                      controller: TextEditingController(text: _numRows.toString()),
-                      onChanged: (value) => setState(() => _numRows = int.tryParse(value) ?? 3),
+                      decoration: InputDecoration(
+                        hintText: '1 - 20',
+                        labelText: 'Number of Rows',
+                        errorText: _numRowsErrorMessage.isNotEmpty ? _numRowsErrorMessage : null,
+                      ),
+                      controller: _numRowsController,
+                      focusNode: _numRowsFocusNode,
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Space between beachchairs (m)'),
-                      controller: TextEditingController(text: _spotSpacing.toString()),
-                      onChanged: (value) => setState(() => _spotSpacing = double.tryParse(value) ?? 4.0),
+                      decoration: InputDecoration(
+                        hintText: '1 - 20',
+                        labelText: 'Space between beachchairs (m)',
+                        errorText: _spotSpacingErrorMessage.isNotEmpty ? _spotSpacingErrorMessage : null,
+                      ),
+                      controller: _spotSpacingController,
+                      focusNode: _spotSpacingFocusNode,
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Space between rows (m)'),
-                      controller: TextEditingController(text: _rowSpacing.toString()),
-                      onChanged: (value) => setState(() => _rowSpacing = double.tryParse(value) ?? 4.0),
+                      decoration: InputDecoration(
+                        hintText: '1 - 20',
+                        labelText: 'Space between rows (m)',
+                        errorText: _rowSpacingErrorMessage.isNotEmpty ? _rowSpacingErrorMessage : null,
+                      ),
+                      controller: _rowSpacingController,
+                      focusNode: _rowSpacingFocusNode,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
@@ -204,6 +297,9 @@ class MapScreenState extends State<MapScreen> {
       _rowSpacing = section.rowSpacing;
       _startPoint = section.startPoint;
       _endPoint = section.endPoint;
+      _numRowsController.text = _numRows.toString();
+      _spotSpacingController.text = _spotSpacing.toString();
+      _rowSpacingController.text = _rowSpacing.toString();
       _showInputForm = true;
     });
   }
@@ -211,7 +307,7 @@ class MapScreenState extends State<MapScreen> {
   void _updateBeachSection() {
     setState(() {
       if (_selectedBeachSection != null) {
-        _selectedBeachSection?.copyWith(
+        _selectedBeachSection!.copyWith(
           startPoint: _startPoint,
           endPoint: _endPoint,
           numRows: _numRows,
@@ -219,12 +315,6 @@ class MapScreenState extends State<MapScreen> {
           rowSpacing: _rowSpacing,
           spots: [],
         );
-        // _selectedBeachSection!.numRows = _numRows;
-        // _selectedBeachSection!.spotSpacing = _spotSpacing;
-        // _selectedBeachSection!.rowSpacing = _rowSpacing;
-        // _selectedBeachSection!.startPoint = _startPoint;
-        // _selectedBeachSection!.endPoint = _endPoint;
-        // _selectedBeachSection!.spots.clear();
         _distributeSpotsForBeachSection(_selectedBeachSection!);
       }
       _selectedBeachSection = null;
