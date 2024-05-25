@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class SideMenu extends StatelessWidget {
   const SideMenu({super.key});
@@ -9,51 +10,47 @@ class SideMenu extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const DrawerHeader(
-            decoration: BoxDecoration(
+          DrawerHeader(
+            decoration: const BoxDecoration(
               color: Colors.blue,
             ),
-            child: Text(
-              'Menü',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-              ),
+            child: Image.asset(
+              'assets/images/smartkorb-image-splash.png',
             ),
           ),
           ListTile(
             leading: const Icon(Icons.home),
             title: const Text('Startseite'),
             onTap: () {
-              Navigator.pushNamed(context, '/home');
+              context.go('/');
             },
           ),
           ListTile(
             leading: const Icon(Icons.calendar_today),
             title: const Text('Kalender'),
             onTap: () {
-              Navigator.pushNamed(context, '/calendar');
+              context.go('/calendar');
             },
           ),
           ListTile(
             leading: const Icon(Icons.list),
             title: const Text('Aufstellung'),
             onTap: () {
-              Navigator.pushNamed(context, '/setup');
+              context.go('/setup');
             },
           ),
           ListTile(
             leading: const Icon(Icons.beach_access),
             title: const Text('Strandkörbe'),
             onTap: () {
-              Navigator.pushNamed(context, '/beachchairs');
+              context.go('/beachchairs');
             },
           ),
           ListTile(
             leading: const Icon(Icons.attach_money),
             title: const Text('Preise'),
             onTap: () {
-              Navigator.pushNamed(context, '/prices');
+              context.go('/prices');
             },
           ),
         ],
