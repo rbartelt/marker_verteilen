@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:geodesy/geodesy.dart';
 
 import 'beachsection.dart';
@@ -57,23 +58,9 @@ class MapScreenState extends State<MapScreen> {
     _spotSpacingController.text = _spotSpacing.toString();
     _rowSpacingController.text = _rowSpacing.toString();
 
-    _numRowsFocusNode.addListener(() {
-      if (!_numRowsFocusNode.hasFocus) {
-        _validateNumRows();
-      }
-    });
-
-    _spotSpacingFocusNode.addListener(() {
-      if (!_spotSpacingFocusNode.hasFocus) {
-        _validateSpotSpacing();
-      }
-    });
-
-    _rowSpacingFocusNode.addListener(() {
-      if (!_rowSpacingFocusNode.hasFocus) {
-        _validateRowSpacing();
-      }
-    });
+    _numRowsFocusNode.addListener(() => _validateInput(_numRowsFocusNode, _validateNumRows));
+    _spotSpacingFocusNode.addListener(() => _validateInput(_spotSpacingFocusNode, _validateSpotSpacing));
+    _rowSpacingFocusNode.addListener(() => _validateInput(_rowSpacingFocusNode, _validateRowSpacing));
   }
 
   @override
@@ -87,13 +74,17 @@ class MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
+  void _validateInput(FocusNode focusNode, Function validateFunction) {
+    if (!focusNode.hasFocus) {
+      validateFunction();
+    }
+  }
+
   void _validateNumRows() {
     setState(() {
       _numRowsErrorMessage = '';
       final parsedValue = int.tryParse(_numRowsController.text);
-      if (parsedValue == null) {
-        _numRowsErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
-      } else if (parsedValue < 1 || parsedValue > 20) {
+      if (parsedValue == null || parsedValue < 1 || parsedValue > 20) {
         _numRowsErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
       } else {
         _numRows = parsedValue;
@@ -105,9 +96,7 @@ class MapScreenState extends State<MapScreen> {
     setState(() {
       _spotSpacingErrorMessage = '';
       final parsedValue = double.tryParse(_spotSpacingController.text);
-      if (parsedValue == null) {
-        _spotSpacingErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
-      } else if (parsedValue < 1 || parsedValue > 20) {
+      if (parsedValue == null || parsedValue < 1 || parsedValue > 20) {
         _spotSpacingErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
       } else {
         _spotSpacing = parsedValue;
@@ -119,9 +108,7 @@ class MapScreenState extends State<MapScreen> {
     setState(() {
       _rowSpacingErrorMessage = '';
       final parsedValue = double.tryParse(_rowSpacingController.text);
-      if (parsedValue == null) {
-        _rowSpacingErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
-      } else if (parsedValue < 1 || parsedValue > 20) {
+      if (parsedValue == null || parsedValue < 1 || parsedValue > 20) {
         _rowSpacingErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
       } else {
         _rowSpacing = parsedValue;
@@ -149,124 +136,129 @@ class MapScreenState extends State<MapScreen> {
                 urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
                 subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
                 userAgentPackageName: 'com.example.app',
+                tileProvider: CancellableNetworkTileProvider(),
               ),
               MarkerLayer(
-                markers: [
-                  if (_startPoint != null)
-                    Marker(
-                      width: 80.0,
-                      height: 80.0,
-                      point: _startPoint!,
-                      child: const Icon(Icons.location_on, color: Colors.red),
-                    ),
-                  ...beachSections.expand((section) => section.spots.map((spot) => Marker(
-                        width: 80.0,
-                        height: 80.0,
-                        point: spot,
-                        child: GestureDetector(
-                          onTap: () => _selectBeachSection(section),
-                          child: Icon(
-                            Icons.location_on,
-                            color: _selectedBeachSection == section ? Colors.green : Colors.blue,
-                          ),
-                        ),
-                      ))),
-                ],
+                markers: _buildMarkers(),
               ),
             ],
           ),
-          Positioned(
-            top: 16,
-            right: 16,
-            child: Container(
-              color: Colors.white.withOpacity(0.5),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  ElevatedButton(
-                    onPressed: _toggleInputForm,
-                    child: const Text('Add Beach Section'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_infoMessage.isNotEmpty)
-            Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                color: Colors.blue,
-                child: Text(
-                  _infoMessage,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          if (_showInputForm)
-            Positioned(
-              top: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.3,
-                color: Colors.white,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_selectedBeachSection == null ? 'Add Beach Section' : 'Edit Beach Section', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: '1 - 20',
-                        labelText: 'Number of Rows',
-                        errorText: _numRowsErrorMessage.isNotEmpty ? _numRowsErrorMessage : null,
-                      ),
-                      controller: _numRowsController,
-                      focusNode: _numRowsFocusNode,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: '1 - 20',
-                        labelText: 'Space between beachchairs (m)',
-                        errorText: _spotSpacingErrorMessage.isNotEmpty ? _spotSpacingErrorMessage : null,
-                      ),
-                      controller: _spotSpacingController,
-                      focusNode: _spotSpacingFocusNode,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        hintText: '1 - 20',
-                        labelText: 'Space between rows (m)',
-                        errorText: _rowSpacingErrorMessage.isNotEmpty ? _rowSpacingErrorMessage : null,
-                      ),
-                      controller: _rowSpacingController,
-                      focusNode: _rowSpacingFocusNode,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _selectedBeachSection == null ? _startAddingBeachSection : _updateBeachSection,
-                      child: Text(_selectedBeachSection == null ? 'Start Adding' : 'Update'),
-                    ),
-                    if (_selectedBeachSection != null)
-                      ElevatedButton(
-                        onPressed: _cancelEdit,
-                        child: const Text('Cancel'),
-                      ),
-                  ],
-                ),
-              ),
-            ),
+          _buildTopRightButton(),
+          if (_infoMessage.isNotEmpty) _buildInfoMessage(),
+          if (_showInputForm) _buildInputForm(context),
         ],
       ),
+    );
+  }
+
+  List<Marker> _buildMarkers() {
+    return [
+      if (_startPoint != null)
+        Marker(
+          width: 80.0,
+          height: 80.0,
+          point: _startPoint!,
+          child: const Icon(Icons.location_on, color: Colors.red),
+        ),
+      ...beachSections.expand((section) => section.spots.map((spot) => Marker(
+            width: 80.0,
+            height: 80.0,
+            point: spot,
+            child: GestureDetector(
+              onTap: () => _selectBeachSection(section),
+              child: Icon(
+                Icons.location_on,
+                color: _selectedBeachSection == section ? Colors.green : Colors.blue,
+              ),
+            ),
+          ))),
+    ];
+  }
+
+  Positioned _buildTopRightButton() {
+    return Positioned(
+      top: 16,
+      right: 16,
+      child: Container(
+        color: Colors.white.withOpacity(0.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            ElevatedButton(
+              onPressed: _toggleInputForm,
+              child: const Text('Add Beach Section'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Positioned _buildInfoMessage() {
+    return Positioned(
+      bottom: 16,
+      left: 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.blue,
+        child: Text(
+          _infoMessage,
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Positioned _buildInputForm(BuildContext context) {
+    return Positioned(
+      top: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.3,
+        color: Colors.white,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_selectedBeachSection == null ? 'Add Beach Section' : 'Edit Beach Section', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildTextField('Number of Rows', _numRowsController, _numRowsFocusNode, _numRowsErrorMessage),
+            const SizedBox(height: 8),
+            _buildTextField('Space between beachchairs (m)', _spotSpacingController, _spotSpacingFocusNode, _spotSpacingErrorMessage),
+            const SizedBox(height: 8),
+            _buildTextField('Space between rows (m)', _rowSpacingController, _rowSpacingFocusNode, _rowSpacingErrorMessage),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _selectedBeachSection == null ? _startAddingBeachSection : _updateBeachSection,
+              child: Text(_selectedBeachSection == null ? 'Start Adding' : 'Update'),
+            ),
+            if (_selectedBeachSection != null)
+              ElevatedButton(
+                onPressed: _deleteSelectedBeachSection,
+                child: const Text('Delete'),
+              ),
+            ElevatedButton(
+              onPressed: _cancelEdit,
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  TextField _buildTextField(String labelText, TextEditingController controller, FocusNode focusNode, String errorMessage) {
+    return TextField(
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        hintText: '1 - 20',
+        labelText: labelText,
+        errorText: errorMessage.isNotEmpty ? errorMessage : null,
+      ),
+      controller: controller,
+      focusNode: focusNode,
     );
   }
 
@@ -322,6 +314,17 @@ class MapScreenState extends State<MapScreen> {
     });
   }
 
+  void _deleteSelectedBeachSection() {
+    setState(() {
+      if (_selectedBeachSection != null) {
+        beachSections.remove(_selectedBeachSection);
+        _selectedBeachSection = null;
+        _startPoint = null;
+        _showInputForm = false;
+      }
+    });
+  }
+
   void _cancelEdit() {
     setState(() {
       _selectedBeachSection = null;
@@ -362,8 +365,7 @@ class MapScreenState extends State<MapScreen> {
   int _calculateNumberOfBeachchairsBetweenTwoPoints(LatLng point1, LatLng point2, double spacing) {
     Geodesy geodesy = Geodesy();
     num distance = geodesy.distanceBetweenTwoGeoPoints(point1, point2);
-    int numberOfMarkers = (distance ~/ spacing) + 1;
-    return numberOfMarkers;
+    return (distance ~/ spacing) + 1;
   }
 
   void _distributeSpotsForBeachSection(BeachSection section) {
