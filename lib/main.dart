@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:geodesy/geodesy.dart';
+import 'package:marker_verteilen/side_menu.dart';
 
 import 'beachsection.dart';
 
@@ -12,9 +13,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Draw Vector with Markers on Flutter Map',
-      home: MapScreen(),
+    return MaterialApp(
+      title: 'Smartkorb',
+      initialRoute: '/map',
+      routes: {
+        // '/home': (context) => HomeScreen(),
+        // '/calendar': (context) => CalendarScreen(),
+        // '/setup': (context) => SetupScreen(),
+        // '/beachchairs': (context) => BeachchairsScreen(),
+        // '/prices': (context) => PricesScreen(),
+        '/map': (context) => const MapScreen(),
+      },
     );
   }
 }
@@ -120,8 +129,9 @@ class MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Draw Vector with Markers on Flutter Map'),
+        title: const Text('Setup Beachmap'),
       ),
+      drawer: const SideMenu(),
       body: Stack(
         children: [
           FlutterMap(
