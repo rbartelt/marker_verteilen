@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:geodesy/geodesy.dart';
 import 'package:marker_verteilen/presentation/widgets/side_menu.dart';
-
 import '../../domain/entities/beachsection.dart';
+import '../bloc/beachsection_bloc.dart';
 
 class BeachSectionScreen extends StatefulWidget {
   const BeachSectionScreen({super.key});
@@ -69,9 +70,7 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
       ),
       body: Row(
         children: [
-          // Permanentes Seitenmenü
           const SideMenu(),
-          // Hauptinhalt
           Expanded(
             child: Stack(
               children: [
@@ -253,7 +252,7 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
   void _updateBeachSection() {
     setState(() {
       if (_selectedBeachSection != null) {
-        _selectedBeachSection!.copyWith(
+        _selectedBeachSection = _selectedBeachSection!.copyWith(
           startPoint: _startPoint,
           endPoint: _endPoint,
           numRows: _numRows,
@@ -261,7 +260,7 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
           rowSpacing: _rowSpacing,
           spots: [],
         );
-        _distributeSpotsForBeachSection(_selectedBeachSection!);
+        BlocProvider.of<BeachSectionBloc>(context).add(UpdateBeachSectionEvent(_selectedBeachSection!));
       }
       _selectedBeachSection = null;
       _showInputForm = false;
@@ -271,7 +270,7 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
   void _deleteSelectedBeachSection() {
     setState(() {
       if (_selectedBeachSection != null) {
-        beachSections.remove(_selectedBeachSection);
+        BlocProvider.of<BeachSectionBloc>(context).add(DeleteBeachSectionEvent(_selectedBeachSection!));
         _selectedBeachSection = null;
         _startPoint = null;
         _showInputForm = false;
@@ -296,15 +295,15 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
       } else if (_endPoint == null) {
         _endPoint = point;
         if (_selectedBeachSection == null) {
-          beachSections.add(BeachSection(
+          BeachSection newSection = BeachSection(
             numRows: _numRows,
             rowSpacing: _rowSpacing,
             spotSpacing: _spotSpacing,
             startPoint: _startPoint,
             endPoint: _endPoint,
             spots: [],
-          ));
-          _distributeSpotsForBeachSection(beachSections.last);
+          );
+          BlocProvider.of<BeachSectionBloc>(context).add(AddBeachSectionEvent(newSection));
         } else {
           _updateBeachSection();
         }
@@ -314,47 +313,6 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
         _endPoint = null;
       }
     });
-  }
-
-  int _calculateNumberOfBeachchairsBetweenTwoPoints(LatLng point1, LatLng point2, double spacing) {
-    Geodesy geodesy = Geodesy();
-    num distance = geodesy.distanceBetweenTwoGeoPoints(point1, point2);
-    return (distance ~/ spacing) + 1;
-  }
-
-  void _distributeSpotsForBeachSection(BeachSection section) {
-    int numberOfMarkersX = _calculateNumberOfBeachchairsBetweenTwoPoints(section.startPoint!, section.endPoint!, section.spotSpacing);
-    int numberOfMarkersY = section.numRows;
-    double markerSpacingX = section.spotSpacing;
-    double markerSpacingY = section.rowSpacing;
-
-    LatLng startPoint = section.startPoint!;
-    LatLng endPoint = section.endPoint!;
-
-    Geodesy geodesy = Geodesy();
-    num bearing = geodesy.bearingBetweenTwoGeoPoints(startPoint, endPoint);
-    double perpendicularBearing = (bearing + 90) % 360;
-
-    for (int y = 0; y < numberOfMarkersY; y++) {
-      for (int x = 0; x < numberOfMarkersX; x++) {
-        double distanceAlongVector = markerSpacingX * x;
-        double distancePerpendicular = markerSpacingY * y;
-
-        LatLng markerAlongVector = geodesy.destinationPointByDistanceAndBearing(
-          startPoint,
-          distanceAlongVector,
-          bearing,
-        );
-
-        LatLng markerPosition = geodesy.destinationPointByDistanceAndBearing(
-          markerAlongVector,
-          distancePerpendicular,
-          perpendicularBearing,
-        );
-
-        section.spots.add(markerPosition);
-      }
-    }
   }
 
   void _validateInput(FocusNode focusNode, Function validateFunction) {
@@ -379,8 +337,8 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
     setState(() {
       _spotSpacingErrorMessage = '';
       final parsedValue = double.tryParse(_spotSpacingController.text);
-      if (parsedValue == null || parsedValue < 1 || parsedValue > 20) {
-        _spotSpacingErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
+      if (parsedValue == null || parsedValue <= 0) {
+        _spotSpacingErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
       } else {
         _spotSpacing = parsedValue;
       }
@@ -391,8 +349,8 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
     setState(() {
       _rowSpacingErrorMessage = '';
       final parsedValue = double.tryParse(_rowSpacingController.text);
-      if (parsedValue == null || parsedValue < 1 || parsedValue > 20) {
-        _rowSpacingErrorMessage = 'Bitte geben Sie eine Zahl zwischen 1 und 20 ein.';
+      if (parsedValue == null || parsedValue <= 0) {
+        _rowSpacingErrorMessage = 'Bitte geben Sie eine gültige Zahl ein.';
       } else {
         _rowSpacing = parsedValue;
       }

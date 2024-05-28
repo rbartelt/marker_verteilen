@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'domain/usecases/manage_beachsection.dart';
+import 'domain/services/beachsection_service.dart';
+import 'presentation/bloc/beachsection_bloc.dart';
 import 'presentation/pages/beachsection_screen.dart';
 import 'presentation/pages/home_screen.dart';
 
@@ -27,10 +31,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: router,
-      title: 'Smartkorb',
-      debugShowCheckedModeBanner: false,
+    // Initialisiere die Service- und UseCase-Klassen
+    final beachSectionService = BeachSectionService();
+    final manageBeachSection = ManageBeachSection(beachSectionService);
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<BeachSectionBloc>(
+          create: (context) => BeachSectionBloc(manageBeachSection),
+        ),
+      ],
+      child: MaterialApp.router(
+        routerConfig: router,
+        title: 'Smartkorb',
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
