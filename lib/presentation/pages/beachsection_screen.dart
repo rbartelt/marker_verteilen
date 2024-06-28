@@ -78,35 +78,45 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
           Expanded(
             child: BlocBuilder<BeachSectionBloc, BeachSectionState>(
               builder: (context, state) {
-                if (state is BeachSectionAdded) {
-                  beachSections = state.beachSections;
-                }
-                return Stack(
-                  children: [
-                    FlutterMap(
-                      options: MapOptions(
-                        initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
-                        initialZoom: 19,
-                        initialRotation: -45,
-                        onTap: (tapPosition, point) => _handleTap(point),
+                if (state is BeachSectionInitial) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is BeachSectionAdded || state is BeachSectionUpdated || state is BeachSectionDeleted) {
+                  if (state is BeachSectionAdded) {
+                    beachSections = state.beachSections;
+                  } else if (state is BeachSectionUpdated) {
+                    beachSections = state.beachSections;
+                  } else if (state is BeachSectionDeleted) {
+                    beachSections = state.beachSections;
+                  }
+                  return Stack(
+                    children: [
+                      FlutterMap(
+                        options: MapOptions(
+                          initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
+                          initialZoom: 19,
+                          initialRotation: -45,
+                          onTap: (tapPosition, point) => _handleTap(point),
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                            subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
+                            userAgentPackageName: 'com.example.app',
+                            tileProvider: CancellableNetworkTileProvider(),
+                          ),
+                          MarkerLayer(
+                            markers: _buildMarkers(),
+                          ),
+                        ],
                       ),
-                      children: [
-                        TileLayer(
-                          urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                          subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
-                          userAgentPackageName: 'com.example.app',
-                          tileProvider: CancellableNetworkTileProvider(),
-                        ),
-                        MarkerLayer(
-                          markers: _buildMarkers(),
-                        ),
-                      ],
-                    ),
-                    _buildTopRightButton(),
-                    if (_infoMessage.isNotEmpty) _buildInfoMessage(),
-                    if (_showInputForm) _buildInputForm(context),
-                  ],
-                );
+                      _buildTopRightButton(),
+                      if (_infoMessage.isNotEmpty) _buildInfoMessage(),
+                      if (_showInputForm) _buildInputForm(context),
+                    ],
+                  );
+                } else {
+                  return const Center(child: Text('Unexpected state'));
+                }
               },
             ),
           )
@@ -390,6 +400,7 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
 
   void _validateRowSpacing() {
     setState(() {
+      _rowSpacingErrorMessage = '';
       _rowSpacingErrorMessage = '';
       final parsedValue = double.tryParse(_rowSpacingController.text);
       if (parsedValue == null || parsedValue <= 0) {

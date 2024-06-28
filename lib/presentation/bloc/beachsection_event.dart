@@ -7,6 +7,13 @@ abstract class BeachSectionEvent extends Equatable {
   List<Object> get props => [];
 }
 
+class LoadBeachSectionsEvent extends BeachSectionEvent {
+  const LoadBeachSectionsEvent();
+
+  @override
+  List<Object> get props => [];
+}
+
 class AddBeachSectionEvent extends BeachSectionEvent {
   final BeachSection section;
 

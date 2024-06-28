@@ -10,6 +10,15 @@ class BeachSectionBloc extends Bloc<BeachSectionEvent, BeachSectionState> {
   final ManageBeachSection manageBeachSection;
 
   BeachSectionBloc(this.manageBeachSection) : super(BeachSectionInitial()) {
+    on<LoadBeachSectionsEvent>((event, emit) async {
+      try {
+        final beachSections = await manageBeachSection.getBeachSections();
+        emit(BeachSectionAdded(beachSections));
+      } catch (e) {
+        emit(BeachSectionInitial());
+      }
+    });
+
     on<AddBeachSectionEvent>((event, emit) async {
       await manageBeachSection.addBeachSection(event.section);
       final beachSections = await manageBeachSection.getBeachSections();
@@ -27,5 +36,8 @@ class BeachSectionBloc extends Bloc<BeachSectionEvent, BeachSectionState> {
       final beachSections = await manageBeachSection.getBeachSections();
       emit(BeachSectionDeleted(beachSections));
     });
+
+    // Initialer Ladevorgang
+    add(const LoadBeachSectionsEvent());
   }
 }
