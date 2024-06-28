@@ -1,26 +1,24 @@
 import '../entities/beachsection.dart';
-import '../services/beachsection_service.dart';
+import '../repositories/beachsection_repository.dart';
 
 class ManageBeachSection {
-  List<BeachSection> beachSections = [];
-  final BeachSectionService beachSectionService;
+  final BeachSectionRepository repository;
 
-  ManageBeachSection(this.beachSectionService);
+  ManageBeachSection(this.repository);
 
-  void addBeachSection(BeachSection section) {
-    beachSectionService.distributeSpotsForBeachSection(section);
-    beachSections.add(section);
+  Future<void> addBeachSection(BeachSection section) {
+    return repository.addBeachSection(section);
   }
 
-  void updateBeachSection(BeachSection section) {
-    beachSectionService.distributeSpotsForBeachSection(section);
-    int index = beachSections.indexWhere((s) => s.startPoint == section.startPoint && s.endPoint == section.endPoint);
-    if (index != -1) {
-      beachSections[index] = section;
-    }
+  Future<void> updateBeachSection(BeachSection section) {
+    return repository.updateBeachSection(section);
   }
 
-  void deleteBeachSection(BeachSection section) {
-    beachSections.remove(section);
+  Future<void> deleteBeachSection(BeachSection section) {
+    return repository.deleteBeachSection(section);
+  }
+
+  Future<List<BeachSection>> getBeachSections() {
+    return repository.getBeachSections();
   }
 }

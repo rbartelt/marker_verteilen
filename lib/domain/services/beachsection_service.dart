@@ -1,5 +1,4 @@
 import 'package:geodesy/geodesy.dart';
-import '../entities/beachsection.dart';
 
 class BeachSectionService {
   int calculateNumberOfBeachchairsBetweenTwoPoints(LatLng point1, LatLng point2, double spacing) {
@@ -8,14 +7,18 @@ class BeachSectionService {
     return (distance ~/ spacing) + 1;
   }
 
-  void distributeSpotsForBeachSection(BeachSection section) {
-    int numberOfMarkersX = calculateNumberOfBeachchairsBetweenTwoPoints(section.startPoint!, section.endPoint!, section.spotSpacing);
-    int numberOfMarkersY = section.numRows;
-    double markerSpacingX = section.spotSpacing;
-    double markerSpacingY = section.rowSpacing;
-
-    LatLng startPoint = section.startPoint!;
-    LatLng endPoint = section.endPoint!;
+  List<LatLng> distributeSpotsForBeachSection(
+    LatLng startPoint,
+    LatLng endPoint,
+    int numRows,
+    double spotSpacing,
+    double rowSpacing,
+  ) {
+    int numberOfMarkersX = calculateNumberOfBeachchairsBetweenTwoPoints(startPoint, endPoint, spotSpacing);
+    int numberOfMarkersY = numRows;
+    double markerSpacingX = spotSpacing;
+    double markerSpacingY = rowSpacing;
+    List<LatLng> spots = [];
 
     Geodesy geodesy = Geodesy();
     num bearing = geodesy.bearingBetweenTwoGeoPoints(startPoint, endPoint);
@@ -38,8 +41,9 @@ class BeachSectionService {
           perpendicularBearing,
         );
 
-        section.spots.add(markerPosition);
+        spots.add(markerPosition);
       }
     }
+    return spots;
   }
 }

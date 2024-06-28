@@ -10,19 +10,22 @@ class BeachSectionBloc extends Bloc<BeachSectionEvent, BeachSectionState> {
   final ManageBeachSection manageBeachSection;
 
   BeachSectionBloc(this.manageBeachSection) : super(BeachSectionInitial()) {
-    on<AddBeachSectionEvent>((event, emit) {
-      manageBeachSection.addBeachSection(event.section);
-      emit(BeachSectionAdded(manageBeachSection.beachSections));
+    on<AddBeachSectionEvent>((event, emit) async {
+      await manageBeachSection.addBeachSection(event.section);
+      final beachSections = await manageBeachSection.getBeachSections();
+      emit(BeachSectionAdded(beachSections));
     });
 
-    on<UpdateBeachSectionEvent>((event, emit) {
-      manageBeachSection.updateBeachSection(event.section);
-      emit(BeachSectionUpdated(manageBeachSection.beachSections));
+    on<UpdateBeachSectionEvent>((event, emit) async {
+      await manageBeachSection.updateBeachSection(event.section);
+      final beachSections = await manageBeachSection.getBeachSections();
+      emit(BeachSectionUpdated(beachSections));
     });
 
-    on<DeleteBeachSectionEvent>((event, emit) {
-      manageBeachSection.deleteBeachSection(event.section);
-      emit(BeachSectionDeleted(manageBeachSection.beachSections));
+    on<DeleteBeachSectionEvent>((event, emit) async {
+      await manageBeachSection.deleteBeachSection(event.section);
+      final beachSections = await manageBeachSection.getBeachSections();
+      emit(BeachSectionDeleted(beachSections));
     });
   }
 }

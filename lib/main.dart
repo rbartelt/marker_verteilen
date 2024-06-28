@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'domain/usecases/manage_beachsection.dart';
-import 'domain/services/beachsection_service.dart';
+import 'data/repositories/beachsection_repository_impl.dart';
+import 'data/datasources/supabase_beachsection_datasource.dart';
 import 'presentation/bloc/beachsection_bloc.dart';
 import 'presentation/pages/beachsection_screen.dart';
 import 'presentation/pages/home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+void main() async {
+  await Supabase.initialize(
+    url: 'https://faoaccqijwrgblcewkur.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhb2FjY3FpandyZ2JsY2V3a3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc1MzM4OTYsImV4cCI6MjAzMzEwOTg5Nn0.S4gGDdAdFyVSD7YKHUrCbL0Go5vrA8gcdQySEagjmwQ',
+  );
+
   final GoRouter router = GoRouter(
     routes: [
       GoRoute(
@@ -31,9 +39,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Initialisiere die Service- und UseCase-Klassen
-    final beachSectionService = BeachSectionService();
-    final manageBeachSection = ManageBeachSection(beachSectionService);
+    // Initialisiere die Datenquelle und das Repository
+    final supabaseClient = Supabase.instance.client;
+    final beachSectionDataSource = SupabaseBeachSectionDataSource(supabaseClient);
+    final beachSectionRepository = BeachSectionRepositoryImpl(beachSectionDataSource);
+    final manageBeachSection = ManageBeachSection(beachSectionRepository);
 
     return MultiBlocProvider(
       providers: [
