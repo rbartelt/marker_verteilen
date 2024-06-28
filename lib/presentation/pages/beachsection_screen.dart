@@ -128,7 +128,25 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
   List<Marker> _buildMarkers() {
     List<Marker> markers = [];
 
-    // Füge Start- und Endpunkt-Marker hinzu
+    // Füge Marker für alle BeachSections hinzu
+    for (var section in beachSections) {
+      markers.addAll(section.spots.map(
+        (spot) => Marker(
+          width: 80.0,
+          height: 80.0,
+          point: spot,
+          child: GestureDetector(
+            onTap: () => _selectBeachSection(section),
+            child: Icon(
+              Icons.location_on,
+              color: _selectedBeachSection == section ? Colors.green : Colors.blue,
+            ),
+          ),
+        ),
+      ));
+    }
+
+    // Füge Start- und Endpunkt-Marker für den aktuell bearbeiteten Abschnitt hinzu
     if (_startPoint != null) {
       markers.add(Marker(
         width: 80.0,
@@ -146,42 +164,14 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
       ));
     }
 
-    // Füge Marker für die aktuelle BeachSection hinzu
+    // Füge temporäre Marker für die aktuell bearbeitete oder neue BeachSection hinzu
     if (_markersDisplayed) {
       markers.addAll(_spots.map(
         (spot) => Marker(
           width: 80.0,
           height: 80.0,
           point: spot,
-          child: const Icon(Icons.location_on, color: Colors.blue),
-        ),
-      ));
-    } else if (_selectedBeachSection != null) {
-      // Zeige die ursprünglichen Spots der ausgewählten BeachSection
-      markers.addAll(_selectedBeachSection!.spots.map(
-        (spot) => Marker(
-          width: 80.0,
-          height: 80.0,
-          point: spot,
-          child: const Icon(Icons.location_on, color: Colors.green),
-        ),
-      ));
-    } else {
-      // Zeige alle BeachSections, wenn keine ausgewählt ist und keine neuen Marker angezeigt werden
-      markers.addAll(beachSections.expand(
-        (section) => section.spots.map(
-          (spot) => Marker(
-            width: 80.0,
-            height: 80.0,
-            point: spot,
-            child: GestureDetector(
-              onTap: () => _selectBeachSection(section),
-              child: Icon(
-                Icons.location_on,
-                color: _selectedBeachSection == section ? Colors.green : Colors.blue,
-              ),
-            ),
-          ),
+          child: const Icon(Icons.location_on, color: Colors.orange),
         ),
       ));
     }
@@ -233,35 +223,42 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
         width: MediaQuery.of(context).size.width * 0.3,
         color: Colors.white,
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_selectedBeachSection == null ? 'Add Beach Section' : 'Edit Beach Section', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildTextField('Number of Rows', _numRowsController, _numRowsFocusNode, _numRowsErrorMessage),
-            const SizedBox(height: 8),
-            _buildTextField('Space between beachchairs (m)', _spotSpacingController, _spotSpacingFocusNode, _spotSpacingErrorMessage),
-            const SizedBox(height: 8),
-            _buildTextField('Space between rows (m)', _rowSpacingController, _rowSpacingFocusNode, _rowSpacingErrorMessage),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _validateAndDisplayMarkers,
-              child: const Text('Display Markers'),
-            ),
-            if (_selectedBeachSection != null)
-              ElevatedButton(
-                onPressed: _deleteSelectedBeachSection,
-                child: const Text('Delete'),
+        child: FocusTraversalGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_selectedBeachSection == null ? 'Add Beach Section' : 'Edit Beach Section', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(1),
+                child: _buildTextField('Number of Rows', _numRowsController, _numRowsFocusNode, _numRowsErrorMessage),
               ),
-            ElevatedButton(
-              onPressed: _cancelEdit,
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: _markersDisplayed ? _saveBeachSection : null,
-              child: Text(_selectedBeachSection == null ? 'Save Beach Section' : 'Update Beach Section'),
-            ),
-          ],
+              const SizedBox(height: 8),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(2),
+                child: _buildTextField('Space between beachchairs (m)', _spotSpacingController, _spotSpacingFocusNode, _spotSpacingErrorMessage),
+              ),
+              const SizedBox(height: 8),
+              FocusTraversalOrder(
+                order: const NumericFocusOrder(3),
+                child: _buildTextField('Space between rows (m)', _rowSpacingController, _rowSpacingFocusNode, _rowSpacingErrorMessage),
+              ),
+              const SizedBox(height: 16),
+              if (_selectedBeachSection != null)
+                ElevatedButton(
+                  onPressed: _deleteSelectedBeachSection,
+                  child: const Text('Delete'),
+                ),
+              ElevatedButton(
+                onPressed: _cancelEdit,
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: _markersDisplayed ? _saveBeachSection : null,
+                child: Text(_selectedBeachSection == null ? 'Save Beach Section' : 'Update Beach Section'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -277,7 +274,24 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
       ),
       controller: controller,
       focusNode: focusNode,
+      onEditingComplete: () {
+        if (labelText == 'Number of Rows') {
+          _validateNumRows();
+        } else if (labelText == 'Space between beachchairs (m)') {
+          _validateSpotSpacing();
+        } else if (labelText == 'Space between rows (m)') {
+          _validateRowSpacing();
+        }
+        _validateAndDisplayMarkers();
+        FocusScope.of(context).nextFocus(); // Bewegt den Fokus zum nächsten Feld
+      },
     );
+  }
+
+  void _setInitialFocus() {
+    if (_showInputForm) {
+      _numRowsFocusNode.requestFocus();
+    }
   }
 
   void _startAddingBeachSection() {
@@ -297,7 +311,6 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
       setState(() {
         _spots = BeachSectionService().distributeSpotsForBeachSection(_startPoint!, _endPoint!, _numRows, _rowSpacing, _spotSpacing);
         _markersDisplayed = true;
-        _infoMessage = 'Markers displayed. Please click "Save Beach Section" to save.';
       });
     } else {
       setState(() {
@@ -365,18 +378,14 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
       _rowSpacingController.text = _rowSpacing.toString();
       _showInputForm = true;
     });
+    _setInitialFocus();
   }
 
   void _deleteSelectedBeachSection() {
-    setState(() {
-      if (_selectedBeachSection != null) {
-        BlocProvider.of<BeachSectionBloc>(context).add(DeleteBeachSectionEvent(_selectedBeachSection!));
-        _selectedBeachSection = null;
-        _startPoint = null;
-        _endPoint = null;
-        _showInputForm = false;
-      }
-    });
+    if (_selectedBeachSection != null) {
+      BlocProvider.of<BeachSectionBloc>(context).add(DeleteBeachSectionEvent(_selectedBeachSection!));
+      _cancelEdit();
+    }
   }
 
   void _cancelEdit() {
@@ -414,15 +423,21 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
         _infoMessage = 'Klicke nun den zweiten Punkt des Strandabschnittes an.';
       } else if (_endPoint == null) {
         _endPoint = point;
-        _infoMessage = 'Bitte füllen Sie alle Eingabefelder aus und klicken Sie auf "Display Markers".';
+        _infoMessage = 'Bitte füllen Sie alle Eingabefelder aus und speichern den Strandabschnitt.';
         _showInputForm = true;
       }
     });
+    if (_showInputForm) {
+      _setInitialFocus();
+    }
   }
 
   void _validateInput(FocusNode focusNode, Function validateFunction) {
     if (!focusNode.hasFocus) {
       validateFunction();
+      if (_numRowsErrorMessage.isEmpty && _spotSpacingErrorMessage.isEmpty && _rowSpacingErrorMessage.isEmpty) {
+        _validateAndDisplayMarkers();
+      }
     }
   }
 
@@ -452,7 +467,6 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
 
   void _validateRowSpacing() {
     setState(() {
-      _rowSpacingErrorMessage = '';
       _rowSpacingErrorMessage = '';
       final parsedValue = double.tryParse(_rowSpacingController.text);
       if (parsedValue == null || parsedValue <= 0) {
