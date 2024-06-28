@@ -126,22 +126,49 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
   }
 
   List<Marker> _buildMarkers() {
-    return [
-      if (_startPoint != null)
-        Marker(
+    List<Marker> markers = [];
+
+    // Füge Start- und Endpunkt-Marker hinzu
+    if (_startPoint != null) {
+      markers.add(Marker(
+        width: 80.0,
+        height: 80.0,
+        point: _startPoint!,
+        child: const Icon(Icons.location_on, color: Colors.red),
+      ));
+    }
+    if (_endPoint != null) {
+      markers.add(Marker(
+        width: 80.0,
+        height: 80.0,
+        point: _endPoint!,
+        child: const Icon(Icons.location_on, color: Colors.red),
+      ));
+    }
+
+    // Füge Marker für die aktuelle BeachSection hinzu
+    if (_markersDisplayed) {
+      markers.addAll(_spots.map(
+        (spot) => Marker(
           width: 80.0,
           height: 80.0,
-          point: _startPoint!,
-          child: const Icon(Icons.location_on, color: Colors.red),
+          point: spot,
+          child: const Icon(Icons.location_on, color: Colors.blue),
         ),
-      if (_endPoint != null)
-        Marker(
+      ));
+    } else if (_selectedBeachSection != null) {
+      // Zeige die ursprünglichen Spots der ausgewählten BeachSection
+      markers.addAll(_selectedBeachSection!.spots.map(
+        (spot) => Marker(
           width: 80.0,
           height: 80.0,
-          point: _endPoint!,
-          child: const Icon(Icons.location_on, color: Colors.red),
+          point: spot,
+          child: const Icon(Icons.location_on, color: Colors.green),
         ),
-      ...beachSections.expand(
+      ));
+    } else {
+      // Zeige alle BeachSections, wenn keine ausgewählt ist und keine neuen Marker angezeigt werden
+      markers.addAll(beachSections.expand(
         (section) => section.spots.map(
           (spot) => Marker(
             width: 80.0,
@@ -156,18 +183,10 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
             ),
           ),
         ),
-      ),
-      ..._spots.map(
-        (spot) => Marker(
-          width: 80.0,
-          height: 80.0,
-          point: spot,
-          child: GestureDetector(
-            child: const Icon(Icons.location_on, color: Colors.red),
-          ),
-        ),
-      )
-    ];
+      ));
+    }
+
+    return markers;
   }
 
   Positioned _buildTopRightButton() {
@@ -238,11 +257,10 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
               onPressed: _cancelEdit,
               child: const Text('Cancel'),
             ),
-            if (_selectedBeachSection == null)
-              ElevatedButton(
-                onPressed: _markersDisplayed ? _saveBeachSection : null,
-                child: const Text('Save Beach Section'),
-              ),
+            ElevatedButton(
+              onPressed: _markersDisplayed ? _saveBeachSection : null,
+              child: Text(_selectedBeachSection == null ? 'Save Beach Section' : 'Update Beach Section'),
+            ),
           ],
         ),
       ),
@@ -263,12 +281,10 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
   }
 
   void _startAddingBeachSection() {
+    _cancelEdit(); // Verwendet die neue _cancelEdit Methode zum Zurücksetzen
     setState(() {
       _isAddingBeachSection = true;
       _infoMessage = 'Klicke den ersten Punkt des Strandabschnittes an.';
-      _startPoint = null;
-      _endPoint = null;
-      _showInputForm = false;
     });
   }
 
@@ -293,16 +309,32 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
 
   void _saveBeachSection() {
     if (_markersDisplayed && _spots.isNotEmpty) {
-      BeachSection newSection = BeachSection(
-        id: const Uuid().v4(),
-        startPoint: _startPoint!,
-        endPoint: _endPoint!,
-        numRows: _numRows,
-        rowSpacing: _rowSpacing,
-        spotSpacing: _spotSpacing,
-        spots: _spots,
-      );
-      BlocProvider.of<BeachSectionBloc>(context).add(AddBeachSectionEvent(newSection));
+      if (_selectedBeachSection == null) {
+        // Neue BeachSection hinzufügen
+        BeachSection newSection = BeachSection(
+          id: const Uuid().v4(),
+          startPoint: _startPoint!,
+          endPoint: _endPoint!,
+          numRows: _numRows,
+          rowSpacing: _rowSpacing,
+          spotSpacing: _spotSpacing,
+          spots: _spots,
+        );
+        BlocProvider.of<BeachSectionBloc>(context).add(AddBeachSectionEvent(newSection));
+      } else {
+        // Bestehende BeachSection aktualisieren
+        BeachSection updatedSection = BeachSection(
+          id: _selectedBeachSection!.id,
+          startPoint: _startPoint!,
+          endPoint: _endPoint!,
+          numRows: _numRows,
+          rowSpacing: _rowSpacing,
+          spotSpacing: _spotSpacing,
+          spots: _spots,
+        );
+        BlocProvider.of<BeachSectionBloc>(context).add(UpdateBeachSectionEvent(updatedSection));
+      }
+
       setState(() {
         _isAddingBeachSection = false;
         _showInputForm = false;
@@ -311,6 +343,7 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
         _endPoint = null;
         _spots = [];
         _markersDisplayed = false;
+        _selectedBeachSection = null;
       });
     } else {
       setState(() {
@@ -350,6 +383,25 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
     setState(() {
       _selectedBeachSection = null;
       _showInputForm = false;
+      _isAddingBeachSection = false;
+      _startPoint = null;
+      _endPoint = null;
+      _spots = [];
+      _markersDisplayed = false;
+      _infoMessage = '';
+
+      // Zurücksetzen der Eingabefelder auf Standardwerte
+      _numRows = 3;
+      _spotSpacing = 4.0;
+      _rowSpacing = 4.0;
+      _numRowsController.text = _numRows.toString();
+      _spotSpacingController.text = _spotSpacing.toString();
+      _rowSpacingController.text = _rowSpacing.toString();
+
+      // Zurücksetzen der Fehlermeldungen
+      _numRowsErrorMessage = '';
+      _spotSpacingErrorMessage = '';
+      _rowSpacingErrorMessage = '';
     });
   }
 
