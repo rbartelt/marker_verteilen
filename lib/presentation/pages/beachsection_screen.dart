@@ -80,35 +80,40 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
               builder: (context, state) {
                 if (state is BeachSectionInitial) {
                   return const Center(child: CircularProgressIndicator());
-                } else if (state is BeachSectionAdded || state is BeachSectionUpdated || state is BeachSectionDeleted) {
-                  if (state is BeachSectionAdded) {
-                    beachSections = state.beachSections;
-                  } else if (state is BeachSectionUpdated) {
-                    beachSections = state.beachSections;
-                  } else if (state is BeachSectionDeleted) {
-                    beachSections = state.beachSections;
-                  }
+                } else if (state is BeachSectionLoading) {
                   return Stack(
                     children: [
-                      FlutterMap(
-                        options: MapOptions(
-                          initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
-                          initialZoom: 19,
-                          initialRotation: -45,
-                          onTap: (tapPosition, point) => _handleTap(point),
+                      _buildMap(),
+                      Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: const Center(
+                          child: CircularProgressIndicator(),
                         ),
-                        children: [
-                          TileLayer(
-                            urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-                            subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
-                            userAgentPackageName: 'com.example.app',
-                            tileProvider: CancellableNetworkTileProvider(),
-                          ),
-                          MarkerLayer(
-                            markers: _buildMarkers(),
-                          ),
-                        ],
                       ),
+                    ],
+                  );
+                } else if (state is BeachSectionError) {
+                  return Stack(
+                    children: [
+                      _buildMap(),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          color: Colors.red,
+                          child: Text(
+                            state.errorMessage,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                } else if (state is BeachSectionAdded || state is BeachSectionUpdated || state is BeachSectionDeleted) {
+                  beachSections = state.beachSections;
+
+                  return Stack(
+                    children: [
+                      _buildMap(),
                       _buildTopRightButton(),
                       if (_infoMessage.isNotEmpty) _buildInfoMessage(),
                       if (_showInputForm) _buildInputForm(context),
@@ -122,6 +127,28 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildMap() {
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: const LatLng(54.01758319961416, 14.069338276999131),
+        initialZoom: 19,
+        initialRotation: -45,
+        onTap: (tapPosition, point) => _handleTap(point),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+          subdomains: const ['mt0', 'mt1', 'mt2', 'mt3'],
+          userAgentPackageName: 'com.example.app',
+          tileProvider: CancellableNetworkTileProvider(),
+        ),
+        MarkerLayer(
+          markers: _buildMarkers(),
+        ),
+      ],
     );
   }
 
@@ -322,6 +349,9 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
 
   void _saveBeachSection() {
     if (_markersDisplayed && _spots.isNotEmpty) {
+      // Zeige den Ladezustand an
+      BlocProvider.of<BeachSectionBloc>(context).add(const BeachSectionLoadingEvent());
+
       if (_selectedBeachSection == null) {
         // Neue BeachSection hinzufügen
         BeachSection newSection = BeachSection(
@@ -348,16 +378,8 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
         BlocProvider.of<BeachSectionBloc>(context).add(UpdateBeachSectionEvent(updatedSection));
       }
 
-      setState(() {
-        _isAddingBeachSection = false;
-        _showInputForm = false;
-        _infoMessage = '';
-        _startPoint = null;
-        _endPoint = null;
-        _spots = [];
-        _markersDisplayed = false;
-        _selectedBeachSection = null;
-      });
+      // Schließe das InputForm
+      _cancelEdit();
     } else {
       setState(() {
         _infoMessage = 'Please display markers first.';
@@ -383,7 +405,13 @@ class BeachSectionScreenState extends State<BeachSectionScreen> {
 
   void _deleteSelectedBeachSection() {
     if (_selectedBeachSection != null) {
+      // Zeige den Ladezustand an
+      BlocProvider.of<BeachSectionBloc>(context).add(const BeachSectionLoadingEvent());
+
+      // Lösche die ausgewählte BeachSection
       BlocProvider.of<BeachSectionBloc>(context).add(DeleteBeachSectionEvent(_selectedBeachSection!));
+
+      // Setze die Auswahl zurück
       _cancelEdit();
     }
   }

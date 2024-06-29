@@ -19,6 +19,10 @@ class BeachSectionBloc extends Bloc<BeachSectionEvent, BeachSectionState> {
       }
     });
 
+    on<BeachSectionLoadingEvent>((event, emit) {
+      emit(BeachSectionLoading(state.beachSections));
+    });
+
     on<AddBeachSectionEvent>((event, emit) async {
       await manageBeachSection.addBeachSection(event.section);
       final beachSections = await manageBeachSection.getBeachSections();
@@ -32,9 +36,22 @@ class BeachSectionBloc extends Bloc<BeachSectionEvent, BeachSectionState> {
     });
 
     on<DeleteBeachSectionEvent>((event, emit) async {
-      await manageBeachSection.deleteBeachSection(event.section);
-      final beachSections = await manageBeachSection.getBeachSections();
-      emit(BeachSectionDeleted(beachSections));
+      // Emittiere zuerst den Ladezustand
+      emit(BeachSectionLoading(state.beachSections));
+
+      try {
+        // Führe die Löschoperation durch
+        await manageBeachSection.deleteBeachSection(event.section);
+
+        // Hole die aktualisierte Liste der BeachSections
+        final updatedBeachSections = await manageBeachSection.getBeachSections();
+
+        // Emittiere den erfolgreichen Zustand
+        emit(BeachSectionDeleted(updatedBeachSections));
+      } catch (error) {
+        // Behandle Fehler hier
+        emit(BeachSectionError("Fehler beim Löschen der BeachSection: $error", state.beachSections));
+      }
     });
 
     // Initialer Ladevorgang

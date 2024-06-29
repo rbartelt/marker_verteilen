@@ -40,3 +40,10 @@ class DeleteBeachSectionEvent extends BeachSectionEvent {
   @override
   List<Object> get props => [section];
 }
+
+class BeachSectionLoadingEvent extends BeachSectionEvent {
+  const BeachSectionLoadingEvent();
+
+  @override
+  List<Object> get props => [];
+}

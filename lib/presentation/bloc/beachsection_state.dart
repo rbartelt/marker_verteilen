@@ -1,37 +1,39 @@
 part of 'beachsection_bloc.dart';
 
 abstract class BeachSectionState extends Equatable {
-  const BeachSectionState();
-
-  @override
-  List<Object> get props => [];
-}
-
-class BeachSectionInitial extends BeachSectionState {}
-
-class BeachSectionAdded extends BeachSectionState {
   final List<BeachSection> beachSections;
 
-  const BeachSectionAdded(this.beachSections);
+  const BeachSectionState(this.beachSections);
 
   @override
   List<Object> get props => [beachSections];
+}
+
+class BeachSectionInitial extends BeachSectionState {
+  BeachSectionInitial() : super([]);
+}
+
+class BeachSectionAdded extends BeachSectionState {
+  const BeachSectionAdded(List<BeachSection> beachSections) : super(beachSections);
 }
 
 class BeachSectionUpdated extends BeachSectionState {
-  final List<BeachSection> beachSections;
-
-  const BeachSectionUpdated(this.beachSections);
-
-  @override
-  List<Object> get props => [beachSections];
+  const BeachSectionUpdated(List<BeachSection> beachSections) : super(beachSections);
 }
 
 class BeachSectionDeleted extends BeachSectionState {
-  final List<BeachSection> beachSections;
+  const BeachSectionDeleted(List<BeachSection> beachSections) : super(beachSections);
+}
 
-  const BeachSectionDeleted(this.beachSections);
+class BeachSectionLoading extends BeachSectionState {
+  const BeachSectionLoading(List<BeachSection> beachSections) : super(beachSections);
+}
+
+class BeachSectionError extends BeachSectionState {
+  final String errorMessage;
+
+  const BeachSectionError(this.errorMessage, List<BeachSection> beachSections) : super(beachSections);
 
   @override
-  List<Object> get props => [beachSections];
+  List<Object> get props => [errorMessage, beachSections];
 }
